@@ -6,15 +6,15 @@ import (
 )
 
 func TestError(t *testing.T) {
-	err := MakeErr(
-		MakeErr(
+	err := Chain(
+		Chain(
 			io.EOF,
-			MakeErr(
+			Chain(
 				io.ErrClosedPipe,
 				io.ErrNoProgress,
 			),
 		),
-		MakeErr(
+		Chain(
 			io.ErrShortBuffer,
 			io.ErrUnexpectedEOF,
 		),

@@ -6,59 +6,62 @@ import (
 )
 
 // Error represents a chain of errors
-type Error struct {
-	Err  error
-	Prev error
-
-	flag uint64
-}
+type Error []error
 
 // Is reports whether any error in the chain matches target
 func (c Error) Is(target error) bool {
-	return errors.Is(c.Err, target)
+	for _, err := range c {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
 }
 
 // As reports whether any error in the chain matches target.
 // And if so, assign the first matching error to target
 func (c Error) As(target interface{}) bool {
-	return errors.As(c.Err, target)
-}
-
-// Unwrap returns Prev error
-func (c Error) Unwrap() error {
-	return c.Prev
+	for _, err := range c {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+	return false
 }
 
 // Error implements error interface
 func (c Error) Error() string {
 	var b strings.Builder
-	if leveled, ok := c.Err.(ErrorLeveler); ok {
-		if leveled.ErrorLevel() <= ErrorLevel {
-			b.WriteString(c.Err.Error())
-		}
-	} else {
-		b.WriteString(c.Err.Error())
-	}
-	if c.Prev != nil {
-		prev := c.Prev.Error()
-		if prev != "" {
-			if b.Len() > 0 {
-				b.WriteString("\n")
+	for i, err := range c {
+		var str string
+		if leveled, ok := err.(ErrorLeveler); ok {
+			if leveled.ErrorLevel() <= ErrorLevel {
+				str = err.Error()
 			}
-			b.WriteString(prev)
+		} else {
+			str = err.Error()
 		}
+		if i > 0 && len(str) > 0 && b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(str)
 	}
 	return b.String()
 }
 
-// MakeErr creates an Error with internal manipulations.
-// It's safe to construct Error without calling this function but not encouraged
-func MakeErr(err error, prev error) Error {
-	return Error{
-		Err:  err,
-		Prev: prev,
-		flag: getFlag(err) | getFlag(prev),
+// Chain chains two errors
+func Chain(err error, prev error) Error {
+	chain, ok := err.(Error)
+	if ok {
+		chain = append(chain, prev)
+		return chain
 	}
+	chain, ok = prev.(Error)
+	if ok {
+		chain = append(chain, err)
+		return chain
+	}
+	return Error{err, prev}
 }
 
 // With returns a WrapFunc that wraps an error value
@@ -67,14 +70,6 @@ func With(err error) WrapFunc {
 		if prev == nil {
 			return nil
 		}
-		return MakeErr(err, prev)
-	}
-}
-
-func getFlag(err error) uint64 {
-	if e, ok := err.(Error); !ok {
-		return 0
-	} else {
-		return e.flag
+		return Chain(err, prev)
 	}
 }

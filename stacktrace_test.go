@@ -64,12 +64,12 @@ func TestDropFrame(t *testing.T) {
 
 func TestStacktraceIncluded(t *testing.T) {
 	err := Error{
-		Err: WrapStacktrace(io.EOF),
+		WrapStacktrace(io.EOF),
 	}
 	if !stacktraceIncluded(err) {
 		t.Fatal()
 	}
-	err = MakeErr(
+	err = Chain(
 		io.EOF,
 		WrapStacktrace(io.EOF),
 	)

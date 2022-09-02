@@ -26,7 +26,7 @@ func Handle(errp *error, args ...error) {
 		} else {
 			// wrap if not the same
 			if !errors.Is(err, *errp) && !errors.Is(*errp, err) {
-				err = MakeErr(err, *errp)
+				err = Chain(err, *errp)
 			}
 		}
 	}

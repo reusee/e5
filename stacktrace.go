@@ -115,16 +115,11 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 		}
 	}
 
-	err := MakeErr(stacktrace, prev)
-	err.flag |= flagStacktraceIncluded
+	err := Chain(stacktrace, prev)
 	return err
 })
 
 func stacktraceIncluded(err error) bool {
-	if e, ok := err.(Error); ok &&
-		e.flag&flagStacktraceIncluded > 0 {
-		return true
-	}
 	if errors.As(err, new(*Stacktrace)) {
 		return true
 	}

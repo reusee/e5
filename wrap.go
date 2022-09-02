@@ -33,7 +33,7 @@ func (w WrapFunc) With(args ...error) WrapFunc {
 				return nil
 			}
 			if _, ok := wrapped.(Error); !ok {
-				wrapped = MakeErr(wrapped, err)
+				wrapped = Chain(wrapped, err)
 			}
 			err = wrapped
 		}

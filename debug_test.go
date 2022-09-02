@@ -8,7 +8,7 @@ import (
 func TestDebug(t *testing.T) {
 	err := Debug("foo")(io.EOF)
 	if err.Error() != io.EOF.Error() {
-		t.Fatal()
+		t.Fatalf("got %q", err.Error())
 	}
 	ErrorLevel = DebugLevel
 	err = Debug("foo")(io.EOF)
