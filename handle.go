@@ -35,7 +35,9 @@ func Handle(errp *error, args ...error) {
 		return
 	}
 	// wrap
-	err = Wrap.With(args...)(err)
+	if len(args) > 0 {
+		err = Wrap.With(args...)(err)
+	}
 	if errp != nil {
 		// set pointed variable
 		*errp = err
