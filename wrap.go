@@ -18,6 +18,10 @@ func (w WrapFunc) With(args ...error) WrapFunc {
 	if len(args) == 0 {
 		return w
 	}
+	return w.with(args...)
+}
+
+func (w WrapFunc) with(args ...error) WrapFunc {
 	// convert to WrapFuncs
 	for i, arg := range args {
 		switch arg := arg.(type) {
