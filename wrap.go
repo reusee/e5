@@ -15,6 +15,9 @@ var Wrap = WrapFunc(func(err error) error {
 })
 
 func (w WrapFunc) With(args ...error) WrapFunc {
+	if len(args) == 0 {
+		return w
+	}
 	// convert to WrapFuncs
 	for i, arg := range args {
 		switch arg := arg.(type) {
