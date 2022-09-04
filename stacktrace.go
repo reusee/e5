@@ -48,9 +48,9 @@ func (s *Stacktrace) Error() string {
 }
 
 var pcsPool = NewPool(
-	128,
+	64,
 	func() *[]uintptr {
-		bs := make([]uintptr, 32)
+		bs := make([]uintptr, 128)
 		return &bs
 	},
 )
@@ -68,49 +68,36 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 	v, put := pcsPool.Get()
 	defer put()
 	pcs := *v
-	skip := 1
+
+	n := runtime.Callers(2, pcs)
+	stacktrace.Frames = make([]Frame, 0, n)
+	frames := runtime.CallersFrames(pcs[:n])
 	for {
-		n := runtime.Callers(skip, pcs)
-		if n == 0 {
-			break
-		}
-		for i := 0; i < n; i++ {
-			var slice []Frame
-			frames := runtime.CallersFrames(pcs[i : i+1])
-			for {
-				skip++
-				frame, more := frames.Next()
-				if strings.HasPrefix(frame.Function, "github.com/reusee/e5.") &&
-					!strings.HasPrefix(frame.Function, "github.com/reusee/e5.Test") {
-					// internal funcs
-					if !more {
-						break
-					}
-					continue
-				}
-				dir, file := filepath.Split(frame.File)
-				mod, fn := path.Split(frame.Function)
-				if i := strings.Index(dir, mod); i > 0 {
-					dir = dir[i:]
-				}
-				pkg := fn[:strings.IndexByte(fn, '.')]
-				pkgPath := mod + pkg
-				f := Frame{
-					File:     file,
-					Dir:      dir,
-					Line:     frame.Line,
-					Pkg:      pkg,
-					Function: fn,
-					PkgPath:  pkgPath,
-				}
-				slice = append(slice, f)
-				if !more {
-					break
-				}
+		frame, more := frames.Next()
+		if strings.HasPrefix(frame.Function, "github.com/reusee/e5.") &&
+			!strings.HasPrefix(frame.Function, "github.com/reusee/e5.Test") {
+			// internal funcs
+			if !more {
+				break
 			}
-			stacktrace.Frames = append(stacktrace.Frames, slice...)
+			continue
 		}
-		if n < len(pcs) {
+		dir, file := filepath.Split(frame.File)
+		mod, fn := path.Split(frame.Function)
+		if i := strings.Index(dir, mod); i > 0 {
+			dir = dir[i:]
+		}
+		pkg := fn[:strings.IndexByte(fn, '.')]
+		pkgPath := mod + pkg
+		stacktrace.Frames = append(stacktrace.Frames, Frame{
+			File:     file,
+			Dir:      dir,
+			Line:     frame.Line,
+			Pkg:      pkg,
+			Function: fn,
+			PkgPath:  pkgPath,
+		})
+		if !more {
 			break
 		}
 	}
