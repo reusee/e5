@@ -140,3 +140,13 @@ func DropFrame(fn func(Frame) bool) WrapFunc {
 }
 
 var WrapWithStacktrace = Wrap.With(WrapStacktrace)
+
+func WrapStacktraceWithoutPackageName(names ...string) WrapFunc {
+	m := make(map[string]bool)
+	for _, name := range names {
+		m[name] = true
+	}
+	return WrapStacktrace.With(DropFrame(func(f Frame) bool {
+		return m[f.Pkg]
+	}))
+}

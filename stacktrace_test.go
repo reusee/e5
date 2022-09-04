@@ -78,8 +78,10 @@ func TestStacktraceIncluded(t *testing.T) {
 	}
 }
 
-func BenchmarkStacktrace(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		WrapStacktrace(io.EOF)
+func TestWrapStacktraceWithoutPackageName(t *testing.T) {
+	wrap := Wrap.With(WrapStacktraceWithoutPackageName("runtime", "testing", "e5"))
+	err := wrap(io.EOF)
+	if err.Error() != "EOF" {
+		t.Fatal()
 	}
 }

@@ -76,3 +76,9 @@ func BenchmarkHandleCheckDeep(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkStacktrace(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		WrapStacktrace(io.EOF)
+	}
+}
