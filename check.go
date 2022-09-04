@@ -23,5 +23,3 @@ func (c CheckFunc) With(moreArgs ...error) CheckFunc {
 		return c(err, moreArgs...)
 	}
 }
-
-var CheckWithStacktrace = Check.With(WrapStacktrace)

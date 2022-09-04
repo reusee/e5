@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 )
 
-type Pool[T any] struct {
+type pool[T any] struct {
 	newFunc    func() T
 	pool       []_PoolElem[T]
 	Callers    [][]byte
@@ -23,12 +23,12 @@ type _PoolElem[T any] struct {
 	Value  T
 }
 
-func NewPool[T any](
+func newPool[T any](
 	capacity int32,
 	newFunc func() T,
-) *Pool[T] {
+) *pool[T] {
 
-	pool := &Pool[T]{
+	pool := &pool[T]{
 		capacity: capacity,
 		newFunc:  newFunc,
 	}
@@ -61,12 +61,12 @@ func NewPool[T any](
 	return pool
 }
 
-func (p *Pool[T]) Get() (value T, put func() bool) {
+func (p *pool[T]) Get() (value T, put func() bool) {
 	value, put, _ = p.GetRC()
 	return
 }
 
-func (p *Pool[T]) GetRC() (
+func (p *pool[T]) GetRC() (
 	value T,
 	put func() bool,
 	incRef func(),
@@ -99,7 +99,7 @@ func noopPut() bool {
 func noopIncRef() {
 }
 
-func (p *Pool[T]) Getter() (
+func (p *pool[T]) Getter() (
 	get func() T,
 	putAll func(),
 ) {

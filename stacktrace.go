@@ -47,7 +47,7 @@ func (s *Stacktrace) Error() string {
 	return b.String()
 }
 
-var pcsPool = NewPool(
+var pcsPool = newPool(
 	64,
 	func() *[]uintptr {
 		bs := make([]uintptr, 128)
@@ -138,8 +138,6 @@ func DropFrame(fn func(Frame) bool) WrapFunc {
 		return err
 	}
 }
-
-var WrapWithStacktrace = Wrap.With(WrapStacktrace)
 
 func WrapStacktraceWithoutPackageName(names ...string) WrapFunc {
 	m := make(map[string]bool)

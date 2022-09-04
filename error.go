@@ -33,14 +33,7 @@ func (c Error) As(target interface{}) bool {
 func (c Error) Error() string {
 	var b strings.Builder
 	for i, err := range c {
-		var str string
-		if leveled, ok := err.(ErrorLeveler); ok {
-			if leveled.ErrorLevel() <= ErrorLevel {
-				str = err.Error()
-			}
-		} else {
-			str = err.Error()
-		}
+		str := err.Error()
 		if i > 0 && len(str) > 0 && b.Len() > 0 {
 			b.WriteString("\n")
 		}

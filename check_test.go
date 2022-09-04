@@ -260,7 +260,7 @@ func TestCheck(t *testing.T) {
 
 }
 
-func TestMust(t *testing.T) {
+func TestPanicNoCatch(t *testing.T) {
 	func() {
 		defer func() {
 			p := recover()
@@ -275,7 +275,7 @@ func TestMust(t *testing.T) {
 				t.Fatal()
 			}
 		}()
-		Must(io.EOF)
+		panic(Wrap(io.EOF))
 	}()
 }
 

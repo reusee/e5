@@ -30,5 +30,3 @@ func Info(format string, args ...any) WrapFunc {
 		args:   args,
 	})
 }
-
-var NewInfo = Info
