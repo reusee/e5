@@ -8,6 +8,14 @@ func (t *throw) String() string {
 	return t.err.Error()
 }
 
+func (t *throw) Error() string {
+	return t.err.Error()
+}
+
+func (t *throw) Unwrap() error {
+	return t.err
+}
+
 // Throw checks the error and if not nil, raise a panic which will be recovered by Handle
 func Throw(err error, args ...error) error {
 	if err == nil {
