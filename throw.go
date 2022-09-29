@@ -4,6 +4,10 @@ type throw struct {
 	err error
 }
 
+func (t *throw) String() string {
+	return t.err.Error()
+}
+
 // Throw checks the error and if not nil, raise a panic which will be recovered by Handle
 func Throw(err error, args ...error) error {
 	if err == nil {
