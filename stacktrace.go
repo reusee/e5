@@ -107,10 +107,7 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 })
 
 func stacktraceIncluded(err error) bool {
-	if errors.As(err, new(*Stacktrace)) {
-		return true
-	}
-	return false
+	return errors.As(err, new(*Stacktrace))
 }
 
 var errStacktrace = errors.New("stacktrace")
