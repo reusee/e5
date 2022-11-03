@@ -1,15 +1,32 @@
 package e5
 
 import (
+	"errors"
 	"strings"
 )
 
 // Error represents a chain of errors
 type Error []error
 
-// Unwrap returns wrapped errors
-func (c Error) Unwrap() []error {
-	return c
+// Is reports whether any error in the chain matches target
+func (c Error) Is(target error) bool {
+	for _, err := range c {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// As reports whether any error in the chain matches target.
+// And if so, assign the first matching error to target
+func (c Error) As(target interface{}) bool {
+	for _, err := range c {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+	return false
 }
 
 // Error implements error interface
