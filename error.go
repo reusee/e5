@@ -8,6 +8,12 @@ import (
 // Error represents multiple errors
 type Error []error
 
+func (c Error) copy() Error {
+	ret := make(Error, len(c))
+	copy(ret, c)
+	return ret
+}
+
 // Is reports whether any error in the slice matches target
 func (c Error) Is(target error) bool {
 	for _, err := range c {
@@ -44,17 +50,34 @@ func (c Error) Error() string {
 
 // Join joins two errors
 func Join(err error, prev error) Error {
-	errs, ok := err.(Error)
-	if ok {
-		errs = append(errs, prev)
-		return errs
+	e1, ok1 := err.(Error)
+	e2, ok2 := prev.(Error)
+	if ok1 && !ok2 {
+		if e1.Is(prev) {
+			return e1
+		}
+		return append(e1.copy(), prev)
 	}
-	errs, ok = prev.(Error)
-	if ok {
-		errs = append(errs, err)
-		return errs
+	if !ok1 && ok2 {
+		if e2.Is(err) {
+			return e2
+		}
+		return append(e2.copy(), err)
 	}
-	return Error{err, prev}
+	if !ok1 && !ok2 {
+		if errors.Is(err, prev) {
+			return Error{err}
+		}
+		return Error{err, prev}
+	}
+	e1 = e1.copy()
+	for _, e := range e2 {
+		if e1.Is(e) {
+			continue
+		}
+		e1 = append(e1, e)
+	}
+	return e1
 }
 
 // With returns a WrapFunc that wraps an error value

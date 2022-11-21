@@ -39,3 +39,19 @@ func TestError(t *testing.T) {
 func TestWith(t *testing.T) {
 	TestWrapFunc(t, With(io.EOF))
 }
+
+func TestJoinSame(t *testing.T) {
+	err := Join(
+		Join(
+			io.EOF,
+			io.EOF,
+		),
+		Join(
+			io.EOF,
+			io.EOF,
+		),
+	)
+	if str := err.Error(); str != "EOF" {
+		t.Fatalf("got %s", str)
+	}
+}
