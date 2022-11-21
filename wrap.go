@@ -2,7 +2,7 @@ package e5
 
 import "testing"
 
-// WrapFunc wraps an error to form a chain.
+// WrapFunc wraps an error to form a new one.
 //
 // Instances must follow these rules:
 // if argument is nil, return value must be nil
@@ -40,7 +40,7 @@ func (w WrapFunc) with(args ...error) WrapFunc {
 				return nil
 			}
 			if _, ok := wrapped.(Error); !ok {
-				wrapped = Chain(wrapped, err)
+				wrapped = Join(wrapped, err)
 			}
 			err = wrapped
 		}

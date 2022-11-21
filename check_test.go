@@ -185,7 +185,7 @@ func TestCheck(t *testing.T) {
 		t.Fatal()
 	}
 
-	// auto chain wrap func returns
+	// auto join wrap func returns
 	err = func() (err error) {
 		defer Handle(&err)
 		Check(

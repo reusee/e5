@@ -102,7 +102,7 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 		}
 	}
 
-	err := Chain(stacktrace, prev)
+	err := Join(stacktrace, prev)
 	return err
 })
 
@@ -113,7 +113,7 @@ func stacktraceIncluded(err error) bool {
 var errStacktrace = errors.New("stacktrace")
 
 // DropFrame returns a WrapFunc that drop Frames matching fn.
-// If there is no existed stacktrace in chain, a new one will be created
+// If there is no existed stacktrace, a new one will be created
 func DropFrame(fn func(Frame) bool) WrapFunc {
 	return func(err error) error {
 		if err == nil {

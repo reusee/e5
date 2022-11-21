@@ -69,7 +69,7 @@ func TestStacktraceIncluded(t *testing.T) {
 	if !stacktraceIncluded(err) {
 		t.Fatal()
 	}
-	err = Chain(
+	err = Join(
 		io.EOF,
 		WrapStacktrace(io.EOF),
 	)

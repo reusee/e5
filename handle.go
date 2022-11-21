@@ -5,7 +5,7 @@ import "errors"
 // Handle is for error handling
 //
 // Error raised by Throw will be catched if any.
-// If errp point to non-nil error, the error will be chained.
+// If errp point to non-nil error, the error will be joined.
 // If the result error is not nil, wrap functions will be applied.
 // The result error will be assigned to errp if errp is not nil, otherwise Throw will be raised.
 func Handle(errp *error, args ...error) {
@@ -26,7 +26,7 @@ func Handle(errp *error, args ...error) {
 		} else {
 			// wrap if not the same
 			if !errors.Is(err, *errp) && !errors.Is(*errp, err) {
-				err = Chain(err, *errp)
+				err = Join(err, *errp)
 			}
 		}
 	}

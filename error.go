@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// Error represents a chain of errors
+// Error represents multiple errors
 type Error []error
 
-// Is reports whether any error in the chain matches target
+// Is reports whether any error in the slice matches target
 func (c Error) Is(target error) bool {
 	for _, err := range c {
 		if errors.Is(err, target) {
@@ -18,7 +18,7 @@ func (c Error) Is(target error) bool {
 	return false
 }
 
-// As reports whether any error in the chain matches target.
+// As reports whether any error in the slice matches target.
 // And if so, assign the first matching error to target
 func (c Error) As(target interface{}) bool {
 	for _, err := range c {
@@ -42,17 +42,17 @@ func (c Error) Error() string {
 	return b.String()
 }
 
-// Chain chains two errors
-func Chain(err error, prev error) Error {
-	chain, ok := err.(Error)
+// Join joins two errors
+func Join(err error, prev error) Error {
+	errs, ok := err.(Error)
 	if ok {
-		chain = append(chain, prev)
-		return chain
+		errs = append(errs, prev)
+		return errs
 	}
-	chain, ok = prev.(Error)
+	errs, ok = prev.(Error)
 	if ok {
-		chain = append(chain, err)
-		return chain
+		errs = append(errs, err)
+		return errs
 	}
 	return Error{err, prev}
 }
@@ -63,6 +63,6 @@ func With(err error) WrapFunc {
 		if prev == nil {
 			return nil
 		}
-		return Chain(err, prev)
+		return Join(err, prev)
 	}
 }
