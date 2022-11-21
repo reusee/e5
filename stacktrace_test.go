@@ -85,3 +85,14 @@ func TestWrapStacktraceWithoutPackageName(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestJoinStacktrace(t *testing.T) {
+	err := Join(
+		WrapStacktrace(io.EOF),
+		WrapStacktrace(io.EOF),
+	)
+	str := err.Error()
+	if len(strings.Split(str, "$")) != 2 {
+		t.Fatalf("got %s", str)
+	}
+}

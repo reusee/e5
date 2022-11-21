@@ -47,6 +47,14 @@ func (s *Stacktrace) Error() string {
 	return b.String()
 }
 
+func (s *Stacktrace) Is(err error) bool {
+	// ignore content
+	if _, ok := err.(*Stacktrace); ok {
+		return true
+	}
+	return false
+}
+
 var pcsPool = newPool(
 	64,
 	func() *[]uintptr {
