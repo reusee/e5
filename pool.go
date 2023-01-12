@@ -16,11 +16,11 @@ type pool[T any] struct {
 }
 
 type _PoolElem[T any] struct {
-	Taken  uint32
-	Refs   int32
+	Value  T
 	Put    func() bool
 	IncRef func()
-	Value  T
+	Taken  uint32
+	Refs   int32
 }
 
 func newPool[T any](

@@ -20,8 +20,8 @@ type Frame struct {
 	Dir      string
 	Pkg      string
 	Function string
-	Line     int
 	PkgPath  string
+	Line     int
 }
 
 var _ error = new(Stacktrace)
