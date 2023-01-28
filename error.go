@@ -35,6 +35,11 @@ func (c Error) As(target interface{}) bool {
 	return false
 }
 
+// Unwrap returns all errors
+func (c Error) Unwrap() []error {
+	return c
+}
+
 // Error implements error interface
 func (c Error) Error() string {
 	var b strings.Builder
