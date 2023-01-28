@@ -13,7 +13,7 @@ func TestStacktrace(t *testing.T) {
 
 	trace := WrapStacktrace(io.EOF)
 	ok, err := regexp.MatchString(
-		`\$ e5.stacktrace_test.go:[0-9]+ .*/e5/ e5.TestStacktrace\n&.*\n&.*\nEOF`,
+		`\$ e5.stacktrace_test.go:[0-9]+ .*/e5/.* e5.TestStacktrace\n&.*\n&.*`,
 		trace.Error(),
 	)
 	if err != nil {
@@ -63,9 +63,7 @@ func TestDropFrame(t *testing.T) {
 }
 
 func TestStacktraceIncluded(t *testing.T) {
-	err := Error{
-		WrapStacktrace(io.EOF),
-	}
+	err := WrapStacktrace(io.EOF)
 	if !stacktraceIncluded(err) {
 		t.Fatal()
 	}

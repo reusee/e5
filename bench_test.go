@@ -82,3 +82,11 @@ func BenchmarkStacktrace(b *testing.B) {
 		WrapStacktrace(io.EOF)
 	}
 }
+
+func BenchmarkJoin(b *testing.B) {
+	e1 := io.EOF
+	e2 := io.ErrUnexpectedEOF
+	for i := 0; i < b.N; i++ {
+		Join(e1, e2)
+	}
+}

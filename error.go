@@ -6,17 +6,22 @@ import (
 )
 
 // Error represents multiple errors
-type Error []error
+type Error map[error]struct{}
 
 func (c Error) copy() Error {
 	ret := make(Error, len(c))
-	copy(ret, c)
+	for e := range c {
+		ret[e] = struct{}{}
+	}
 	return ret
 }
 
 // Is reports whether any error in the slice matches target
 func (c Error) Is(target error) bool {
-	for _, err := range c {
+	if _, ok := c[target]; ok {
+		return true
+	}
+	for err := range c {
 		if errors.Is(err, target) {
 			return true
 		}
@@ -27,7 +32,7 @@ func (c Error) Is(target error) bool {
 // As reports whether any error in the slice matches target.
 // And if so, assign the first matching error to target
 func (c Error) As(target interface{}) bool {
-	for _, err := range c {
+	for err := range c {
 		if errors.As(err, target) {
 			return true
 		}
@@ -37,18 +42,24 @@ func (c Error) As(target interface{}) bool {
 
 // Unwrap returns all errors
 func (c Error) Unwrap() []error {
-	return c
+	ret := make([]error, 0, len(c))
+	for err := range c {
+		ret = append(ret, err)
+	}
+	return ret
 }
 
 // Error implements error interface
 func (c Error) Error() string {
 	var b strings.Builder
-	for i, err := range c {
+	i := 0
+	for err := range c {
 		str := err.Error()
 		if i > 0 && len(str) > 0 && b.Len() > 0 {
 			b.WriteString("\n")
 		}
 		b.WriteString(str)
+		i++
 	}
 	return b.String()
 }
@@ -61,26 +72,35 @@ func Join(err error, prev error) Error {
 		if e1.Is(prev) {
 			return e1
 		}
-		return append(e1.copy(), prev)
+		ret := e1.copy()
+		ret[prev] = struct{}{}
+		return ret
 	}
 	if !ok1 && ok2 {
 		if e2.Is(err) {
 			return e2
 		}
-		return append(e2.copy(), err)
+		ret := e2.copy()
+		ret[err] = struct{}{}
+		return ret
 	}
 	if !ok1 && !ok2 {
 		if errors.Is(err, prev) {
-			return Error{err}
+			return Error{
+				err: struct{}{},
+			}
 		}
-		return Error{err, prev}
+		return Error{
+			err:  struct{}{},
+			prev: struct{}{},
+		}
 	}
 	e1 = e1.copy()
-	for _, e := range e2 {
+	for e := range e2 {
 		if e1.Is(e) {
 			continue
 		}
-		e1 = append(e1, e)
+		e1[e] = struct{}{}
 	}
 	return e1
 }

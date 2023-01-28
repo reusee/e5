@@ -3,7 +3,7 @@ package e5
 import (
 	"errors"
 	"io"
-	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -33,15 +33,12 @@ func TestCheck(t *testing.T) {
 	if !is(err, io.EOF) {
 		t.Fatal()
 	}
-	ok, e := regexp.MatchString(
-		"foo bar\nEOF",
-		err.Error(),
-	)
-	if e != nil {
-		t.Fatal(e)
+	errString := err.Error()
+	if !strings.Contains(errString, "EOF") {
+		t.Fatal()
 	}
-	if !ok {
-		t.Fatalf("got %s", err.Error())
+	if !strings.Contains(errString, "foo bar") {
+		t.Fatal()
 	}
 
 	// handle with wrap funcs
@@ -53,15 +50,12 @@ func TestCheck(t *testing.T) {
 	if !is(err, io.EOF) {
 		t.Fatal()
 	}
-	ok, e = regexp.MatchString(
-		`foo bar\nEOF`,
-		err.Error(),
-	)
-	if e != nil {
-		t.Fatal(e)
+	errString = err.Error()
+	if !strings.Contains(errString, "EOF") {
+		t.Fatal()
 	}
-	if !ok {
-		t.Fatalf("got %s", err.Error())
+	if !strings.Contains(errString, "foo bar") {
+		t.Fatal()
 	}
 
 	// check and handle nil
@@ -102,7 +96,11 @@ func TestCheck(t *testing.T) {
 		defer Handle(&err, Info("foo %s", "bar"))
 		return io.EOF
 	}()
-	if err.Error() != "foo bar\nEOF" {
+	errString = err.Error()
+	if !strings.Contains(errString, "EOF") {
+		t.Fatal()
+	}
+	if !strings.Contains(errString, "foo bar") {
 		t.Fatal()
 	}
 	if !is(err, io.EOF) {
