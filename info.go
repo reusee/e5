@@ -30,3 +30,11 @@ func Info(format string, args ...any) WrapFunc {
 		args:   args,
 	})
 }
+
+func (w WrapFunc) WithInfo(format string, args ...any) WrapFunc {
+	return w.With(Info(format, args...))
+}
+
+func (c CheckFunc) WithInfo(format string, args ...any) CheckFunc {
+	return c.With(Info(format, args...))
+}
