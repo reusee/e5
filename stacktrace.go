@@ -69,7 +69,7 @@ func (s *Stacktrace) Is(err error) bool {
 var pcsPool = sync.Pool{
 	New: func() any {
 		slice := make([]uintptr, 128)
-		return &slice
+		return slice
 	},
 }
 
@@ -88,10 +88,9 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 		return prev
 	}
 
-	pcs := *pcsPool.Get().(*[]uintptr)
+	pcs := pcsPool.Get().([]uintptr)
 	defer func() {
-		pcs = pcs[:cap(pcs)]
-		pcsPool.Put(&pcs)
+		pcsPool.Put(pcs)
 	}()
 
 	n := runtime.Callers(2, pcs)
@@ -156,7 +155,8 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 })
 
 func stacktraceIncluded(err error) bool {
-	return errors.As(err, new(*Stacktrace))
+	var p *Stacktrace
+	return errors.Is(err, p)
 }
 
 var errStacktrace = errors.New("stacktrace")
