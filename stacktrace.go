@@ -3,16 +3,21 @@ package e5
 import (
 	"errors"
 	"fmt"
+	"hash/maphash"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"unsafe"
 )
 
 // Stacktrace represents call stack frames
 type Stacktrace struct {
-	Frames []Frame
+	hashSum uint64
 }
+
+var framesInfo sync.Map // uint64 -> []Frame
 
 // Frame represents a call frame
 type Frame struct {
@@ -28,8 +33,14 @@ var _ error = new(Stacktrace)
 
 // Error implements error interface
 func (s *Stacktrace) Error() string {
+	v, ok := framesInfo.Load(s.hashSum)
+	if !ok {
+		panic("bad key")
+	}
+	frames := v.([]Frame)
+
 	var b strings.Builder
-	for i, frame := range s.Frames {
+	for i, frame := range frames {
 		if i == 0 {
 			b.WriteString("$ ")
 		} else {
@@ -55,13 +66,18 @@ func (s *Stacktrace) Is(err error) bool {
 	return false
 }
 
-var pcsPool = newPool(
-	64,
-	func() *[]uintptr {
-		bs := make([]uintptr, 128)
-		return &bs
+var pcsPool = sync.Pool{
+	New: func() any {
+		slice := make([]uintptr, 128)
+		return &slice
 	},
-)
+}
+
+var hasherPool = sync.Pool{
+	New: func() any {
+		return new(maphash.Hash)
+	},
+}
 
 // WrapStacktrace wraps current stacktrace
 var WrapStacktrace = WrapFunc(func(prev error) error {
@@ -72,44 +88,69 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 		return prev
 	}
 
-	stacktrace := new(Stacktrace)
-	v, put := pcsPool.Get()
-	defer put()
-	pcs := *v
+	pcs := *pcsPool.Get().(*[]uintptr)
+	defer func() {
+		pcs = pcs[:cap(pcs)]
+		pcsPool.Put(&pcs)
+	}()
 
 	n := runtime.Callers(2, pcs)
-	stacktrace.Frames = make([]Frame, 0, n)
-	frames := runtime.CallersFrames(pcs[:n])
-	for {
-		frame, more := frames.Next()
-		if strings.HasPrefix(frame.Function, "github.com/reusee/e5.") &&
-			!strings.HasPrefix(frame.Function, "github.com/reusee/e5.Test") {
-			// internal funcs
+	pcs = pcs[:n]
+
+	hasher := hasherPool.Get().(*maphash.Hash)
+	defer func() {
+		hasher.Reset()
+		hasherPool.Put(hasher)
+	}()
+	for _, pc := range pcs {
+		hasher.Write(
+			unsafe.Slice(
+				(*byte)(unsafe.Pointer(&pc)),
+				unsafe.Sizeof(pc),
+			),
+		)
+	}
+	sum := hasher.Sum64()
+
+	if _, ok := framesInfo.Load(sum); !ok {
+		// construct frame infos
+		frames := make([]Frame, 0, n)
+		runtimeFrames := runtime.CallersFrames(pcs[:n])
+		for {
+			frame, more := runtimeFrames.Next()
+			if strings.HasPrefix(frame.Function, "github.com/reusee/e5.") &&
+				!strings.HasPrefix(frame.Function, "github.com/reusee/e5.Test") {
+				// internal funcs
+				if !more {
+					break
+				}
+				continue
+			}
+			dir, file := filepath.Split(frame.File)
+			mod, fn := path.Split(frame.Function)
+			if i := strings.Index(dir, mod); i > 0 {
+				dir = dir[i:]
+			}
+			pkg := fn[:strings.IndexByte(fn, '.')]
+			pkgPath := mod + pkg
+			frames = append(frames, Frame{
+				File:     file,
+				Dir:      dir,
+				Line:     frame.Line,
+				Pkg:      pkg,
+				Function: fn,
+				PkgPath:  pkgPath,
+			})
 			if !more {
 				break
 			}
-			continue
 		}
-		dir, file := filepath.Split(frame.File)
-		mod, fn := path.Split(frame.Function)
-		if i := strings.Index(dir, mod); i > 0 {
-			dir = dir[i:]
-		}
-		pkg := fn[:strings.IndexByte(fn, '.')]
-		pkgPath := mod + pkg
-		stacktrace.Frames = append(stacktrace.Frames, Frame{
-			File:     file,
-			Dir:      dir,
-			Line:     frame.Line,
-			Pkg:      pkg,
-			Function: fn,
-			PkgPath:  pkgPath,
-		})
-		if !more {
-			break
-		}
+		framesInfo.LoadOrStore(sum, frames)
 	}
 
+	stacktrace := &Stacktrace{
+		hashSum: sum,
+	}
 	err := Join(stacktrace, prev)
 	return err
 })
@@ -119,37 +160,3 @@ func stacktraceIncluded(err error) bool {
 }
 
 var errStacktrace = errors.New("stacktrace")
-
-// DropFrame returns a WrapFunc that drop Frames matching fn.
-// If there is no existed stacktrace, a new one will be created
-func DropFrame(fn func(Frame) bool) WrapFunc {
-	return func(err error) error {
-		if err == nil {
-			return nil
-		}
-		var stacktrace *Stacktrace
-		if !errors.As(err, &stacktrace) {
-			err = WrapStacktrace(err)
-			errors.As(err, &stacktrace)
-		}
-		newFrames := stacktrace.Frames[:0]
-		for _, frame := range stacktrace.Frames {
-			if fn(frame) {
-				continue
-			}
-			newFrames = append(newFrames, frame)
-		}
-		stacktrace.Frames = newFrames
-		return err
-	}
-}
-
-func WrapStacktraceWithoutPackageName(names ...string) WrapFunc {
-	m := make(map[string]bool)
-	for _, name := range names {
-		m[name] = true
-	}
-	return WrapStacktrace.With(DropFrame(func(f Frame) bool {
-		return m[f.Pkg]
-	}))
-}

@@ -4,7 +4,7 @@ package e5
 type CheckFunc func(err error, args ...error) error
 
 // Check is for error checking.
-// if err is not nil, it will be wrapped by DefaultWrap then raised by Throw
+// if err is not nil, it will be wrapped with args then raised by Throw
 var Check = CheckFunc(func(err error, args ...error) error {
 	if err == nil {
 		return nil

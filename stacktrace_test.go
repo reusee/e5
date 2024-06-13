@@ -41,27 +41,6 @@ func TestDeepStacktrace(t *testing.T) {
 	}
 }
 
-func TestDropFrame(t *testing.T) {
-	TestWrapFunc(t, DropFrame(func(frmae Frame) bool {
-		return false
-	}))
-
-	err := WrapStacktrace(io.EOF)
-	err = DropFrame(func(frame Frame) bool {
-		return !strings.Contains(frame.Function, "TestDropFrame")
-	})(err)
-	var stacktrace *Stacktrace
-	if !as(err, &stacktrace) {
-		t.Fatal()
-	}
-	if len(stacktrace.Frames) != 1 {
-		t.Fatal()
-	}
-	if !strings.Contains(stacktrace.Frames[0].Function, "TestDropFrame") {
-		t.Fatal()
-	}
-}
-
 func TestStacktraceIncluded(t *testing.T) {
 	err := Error{
 		WrapStacktrace(io.EOF),
@@ -74,14 +53,6 @@ func TestStacktraceIncluded(t *testing.T) {
 		WrapStacktrace(io.EOF),
 	)
 	if !stacktraceIncluded(err) {
-		t.Fatal()
-	}
-}
-
-func TestWrapStacktraceWithoutPackageName(t *testing.T) {
-	wrap := Wrap.With(WrapStacktraceWithoutPackageName("runtime", "testing", "e5"))
-	err := wrap(io.EOF)
-	if err.Error() != "EOF" {
 		t.Fatal()
 	}
 }
