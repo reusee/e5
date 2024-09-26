@@ -3,59 +3,57 @@ package e5
 import (
 	"errors"
 	"fmt"
-	"hash/maphash"
-	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
-	"unsafe"
+	"unique"
 )
+
+type _PCs [64]uintptr
 
 // Stacktrace represents call stack frames
 type Stacktrace struct {
-	hashSum uint64
-}
-
-var framesInfo sync.Map // uint64 -> []Frame
-
-// Frame represents a call frame
-type Frame struct {
-	File     string
-	Dir      string
-	Pkg      string
-	Function string
-	PkgPath  string
-	Line     int
+	handle unique.Handle[_PCs]
 }
 
 var _ error = new(Stacktrace)
 
 // Error implements error interface
 func (s *Stacktrace) Error() string {
-	v, ok := framesInfo.Load(s.hashSum)
-	if !ok {
-		panic("bad key")
+	pcs := s.handle.Value()
+	i := 0
+	for pcs[i] > 0 {
+		i++
 	}
-	frames := v.([]Frame)
 
-	var b strings.Builder
-	for i, frame := range frames {
-		if i == 0 {
-			b.WriteString("$ ")
-		} else {
-			b.WriteString("\n& ")
+	buf := new(strings.Builder)
+
+	frames := runtime.CallersFrames(pcs[:i])
+	firstLine := true
+	for {
+		frame, more := frames.Next()
+
+		if strings.HasPrefix(frame.Function, "github.com/reusee/e5.") &&
+			!strings.HasPrefix(frame.Function, "github.com/reusee/e5.Test") {
+			// internal funcs
+			if !more {
+				break
+			}
+			continue
 		}
-		b.WriteString(fmt.Sprintf(
-			"%s:%s:%d %s %s",
-			frame.Pkg,
-			frame.File,
-			frame.Line,
-			frame.Dir,
-			frame.Function,
-		))
+
+		if firstLine {
+			fmt.Fprintf(buf, "$ %v %v:%v", frame.Function, frame.File, frame.Line)
+			firstLine = false
+		} else {
+			fmt.Fprintf(buf, "\n& %v %v:%v", frame.Function, frame.File, frame.Line)
+		}
+
+		if !more {
+			break
+		}
 	}
-	return b.String()
+
+	return buf.String()
 }
 
 func (s *Stacktrace) Is(err error) bool {
@@ -64,19 +62,6 @@ func (s *Stacktrace) Is(err error) bool {
 		return true
 	}
 	return false
-}
-
-var pcsPool = sync.Pool{
-	New: func() any {
-		slice := make([]uintptr, 128)
-		return slice
-	},
-}
-
-var hasherPool = sync.Pool{
-	New: func() any {
-		return new(maphash.Hash)
-	},
 }
 
 // WrapStacktrace wraps current stacktrace
@@ -88,67 +73,11 @@ var WrapStacktrace = WrapFunc(func(prev error) error {
 		return prev
 	}
 
-	pcs := pcsPool.Get().([]uintptr)
-	defer func() {
-		pcsPool.Put(pcs)
-	}()
-
-	n := runtime.Callers(2, pcs)
-	pcs = pcs[:n]
-
-	hasher := hasherPool.Get().(*maphash.Hash)
-	defer func() {
-		hasher.Reset()
-		hasherPool.Put(hasher)
-	}()
-	for _, pc := range pcs {
-		hasher.Write(
-			unsafe.Slice(
-				(*byte)(unsafe.Pointer(&pc)),
-				unsafe.Sizeof(pc),
-			),
-		)
-	}
-	sum := hasher.Sum64()
-
-	if _, ok := framesInfo.Load(sum); !ok {
-		// construct frame infos
-		frames := make([]Frame, 0, n)
-		runtimeFrames := runtime.CallersFrames(pcs[:n])
-		for {
-			frame, more := runtimeFrames.Next()
-			if strings.HasPrefix(frame.Function, "github.com/reusee/e5.") &&
-				!strings.HasPrefix(frame.Function, "github.com/reusee/e5.Test") {
-				// internal funcs
-				if !more {
-					break
-				}
-				continue
-			}
-			dir, file := filepath.Split(frame.File)
-			mod, fn := path.Split(frame.Function)
-			if i := strings.Index(dir, mod); i > 0 {
-				dir = dir[i:]
-			}
-			pkg := fn[:strings.IndexByte(fn, '.')]
-			pkgPath := mod + pkg
-			frames = append(frames, Frame{
-				File:     file,
-				Dir:      dir,
-				Line:     frame.Line,
-				Pkg:      pkg,
-				Function: fn,
-				PkgPath:  pkgPath,
-			})
-			if !more {
-				break
-			}
-		}
-		framesInfo.LoadOrStore(sum, frames)
-	}
+	var pcs _PCs
+	runtime.Callers(2, pcs[:])
 
 	stacktrace := &Stacktrace{
-		hashSum: sum,
+		handle: unique.Make(pcs),
 	}
 	err := Join(stacktrace, prev)
 	return err
